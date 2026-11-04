@@ -9,7 +9,7 @@ curl -sL https://raw.githubusercontent.com/northstatic/midi-sober-bridge/main/in
 Or clone and run:
 
 ```bash
-git clone https://github.com/YOUR_USER/midi-sober-bridge.git
+git clone https://github.com/northstatic/midi-sober-bridge.git
 cd midi-sober-bridge
 chmod +x install.sh
 ./install.sh
