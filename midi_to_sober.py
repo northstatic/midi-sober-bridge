@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import mido
 from evdev import UInput, ecodes as e
 import time
@@ -34,89 +35,89 @@ BLACK_MAP = {
 }
 
 def create_uinput():
-keys = list(set(NOTE_MAP.values()) | set(BLACK_MAP.values())) + [e.KEY_LEFTSHIFT]
-return UInput({e.EV_KEY: keys}, name="midi-piano-bridge")
+    keys = list(set(NOTE_MAP.values()) | set(BLACK_MAP.values())) + [e.KEY_LEFTSHIFT]
+    return UInput({e.EV_KEY: keys}, name="midi-piano-bridge")
 
 def main():
-print("MIDI → Sober bridge")
-print("Looking for MIDI piano input...")
+    print("MIDI → Sober bridge")
+    print("Looking for MIDI piano input...")
 
-names = mido.get_input_names()
-if not names:
-print("No MIDI inputs found. Connect your piano and try again.")
-sys.exit(1)
+    names = mido.get_input_names()
+    if not names:
+        print("No MIDI inputs found. Connect your piano and try again.")
+        sys.exit(1)
 
-port_name = names[0]
-print(f"Using: {port_name}")
-print("Switch to Sober, use the piano, and play.\n")
-print("Ctrl+C to exit.\n")
+    port_name = names[0]
+    print(f"Using: {port_name}")
+    print("Switch to Sober, use the piano, and play.\n")
+    print("Ctrl+C to exit.\n")
 
-ui = create_uinput()
-pressed = {}
+    ui = create_uinput()
+    pressed = {}
 
-def on_note_on(note, velocity):
-if velocity == 0:
-on_note_off(note)
-return
-shift = False
-if note in NOTE_MAP:
-key = NOTE_MAP[note]
-elif note in BLACK_MAP:
-key = BLACK_MAP[note]
-shift = True
-else:
-return
-if note in pressed:
-return
+    def on_note_on(note, velocity):
+        if velocity == 0:
+            on_note_off(note)
+            return
+        shift = False
+        if note in NOTE_MAP:
+            key = NOTE_MAP[note]
+        elif note in BLACK_MAP:
+            key = BLACK_MAP[note]
+            shift = True
+        else:
+            return
+        if note in pressed:
+            return
 
-released = []
-if shift:
-for n, k in list(pressed.items()):
-if n in NOTE_MAP:
-ui.write(e.EV_KEY, k, 0)
-released.append((n, k))
-if released:
-ui.syn()
-time.sleep(0.008)
+        released = []
+        if shift:
+            for n, k in list(pressed.items()):
+                if n in NOTE_MAP:
+                    ui.write(e.EV_KEY, k, 0)
+                    released.append((n, k))
+            if released:
+                ui.syn()
+                time.sleep(0.008)
 
-if shift:
-ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 1)
-ui.syn()
-time.sleep(0.01)
-ui.write(e.EV_KEY, key, 1)
-ui.syn()
-if shift:
-time.sleep(0.01)
-ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 0)
-ui.syn()
+        if shift:
+            ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 1)
+            ui.syn()
+            time.sleep(0.01)
+        ui.write(e.EV_KEY, key, 1)
+        ui.syn()
+        if shift:
+            time.sleep(0.01)
+            ui.write(e.EV_KEY, e.KEY_LEFTSHIFT, 0)
+            ui.syn()
 
-for n, k in released:
-ui.write(e.EV_KEY, k, 1)
-if released:
-ui.syn()
+        for n, k in released:
+            ui.write(e.EV_KEY, k, 1)
+        if released:
+            ui.syn()
 
-pressed[note] = key
+        pressed[note] = key
 
-def on_note_off(note):
-if note not in pressed:
-return
-key = pressed.pop(note)
-ui.write(e.EV_KEY, key, 0)
-ui.syn()
+    def on_note_off(note):
+        if note not in pressed:
+            return
+        key = pressed.pop(note)
+        ui.write(e.EV_KEY, key, 0)
+        ui.syn()
 
-try:
-with mido.open_input(port_name) as port:
-for msg in port:
-if msg.type == "note_on":
-on_note_on(msg.note, msg.velocity)
-elif msg.type == "note_off":
-on_note_off(msg.note)
-except KeyboardInterrupt:
-print("\nExiting...")
-for note in list(pressed):
-on_note_off(note)
-finally:
-ui.close()
+    try:
+        with mido.open_input(port_name) as port:
+            for msg in port:
+                if msg.type == "note_on":
+                    on_note_on(msg.note, msg.velocity)
+                elif msg.type == "note_off":
+                    on_note_off(msg.note)
+    except KeyboardInterrupt:
+        print("\nExiting...")
+        for note in list(pressed):
+            on_note_off(note)
+    finally:
+        ui.close()
 
 if __name__ == "__main__":
-main()
+    main()
